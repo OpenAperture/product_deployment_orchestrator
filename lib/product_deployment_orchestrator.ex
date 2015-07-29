@@ -12,6 +12,6 @@ require Logger
     ]
 
     opts = [strategy: :one_for_one, name: __MODULE__]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(children, opts) #somethingasdfasdf
   end
 end

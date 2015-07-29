@@ -21,8 +21,8 @@ config :autostart,
 config :openaperture_overseer_api,
   module_type: :test,
   autostart: true,
-  exchange_id: 9,
-  broker_id: 5
+  exchange_id: 5,
+  broker_id: 2
 
 config :openaperture_manager_api, 
   manager_url: System.get_env("MANAGER_URL"),
@@ -31,6 +31,6 @@ config :openaperture_manager_api,
   oauth_client_secret: System.get_env("OAUTH_CLIENT_SECRET")
 
 config :openaperture_product_deployment_orchestrator,
-  queue_name: "aws:065131256760.workflow_orchestration",
-  exchange_id: 9,
-  broker_id: 5
+  queue_name: "aws:065131256760.product_deployment_orchestrator",
+  exchange_id: 5,
+  broker_id: 2

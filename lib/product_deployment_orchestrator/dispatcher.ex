@@ -6,9 +6,9 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   alias OpenAperture.Messaging.AMQP.QueueBuilder
   alias OpenAperture.Messaging.AMQP.SubscriptionHandler
 
-  alias OpenAperture.WorkflowOrchestrator.MessageManager
+  alias OpenAperture.ProductDeploymentOrchestrator.MessageManager
   alias OpenAperture.ProductDeploymentOrchestrator.Configuration
-  #alias OpenAperture.WorkflowOrchestrator.WorkflowFSM
+  alias OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM
 
   #alias OpenAperture.WorkflowOrchestrator.MessageManager
 
@@ -69,8 +69,11 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
     subscribe(options, workflow_orchestration_queue, fn(payload, _meta, %{delivery_tag: delivery_tag} = async_info) -> 
       try do
         Logger.debug("Starting to process request #{delivery_tag} (workflow #{payload[:id]})")
+        IO.inspect(payload)
         MessageManager.track(async_info)
-        #execute_orchestration(payload, delivery_tag) 
+        execute_orchestration(payload, delivery_tag) 
+        Logger.debug("ACKNOWLEDGING THE MESSAGE AFTER SUCCESSFUL PASS")
+        acknowledge(delivery_tag)
       catch
         :exit, code   -> 
           Logger.error("Message #{delivery_tag} (workflow #{payload[:id]}) Exited with code #{inspect code}.  Payload:  #{inspect payload}")
@@ -93,20 +96,19 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   """
   @spec execute_orchestration(Map, String.t()) :: term
   def execute_orchestration(payload, delivery_tag) do
-    IO.puts("In execute_orchestration");
+    Logger.debug("In execute_orchestration");
 
-    # case WorkflowFSM.start_link(payload, delivery_tag) do
-    #   {:ok, workflow} ->
-    #     {result, _} = WorkflowFSM.execute(workflow)
-    #     if result == :completed do
-    #       Logger.debug("Successfully processed request #{delivery_tag} (workflow #{payload[:id]})")
-    #     else
-    #       Logger.error("Payload failed to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect result}")
-    #     end
-    #   {:error, reason} -> 
-    #     #raise an exception to kick the to another orchestrator (hopefully that can process it)
-    #     raise "Unable to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect reason}"
-    # end
+    case ProductDeploymentFSM.start_link(payload, delivery_tag) do
+      {:ok, pdfsm} ->
+        case ProductDeploymentFSM.execute(pdfsm) do 
+          {:completed, _} -> Logger.debug("Successfully completed pass of FSM with message #{delivery_tag}")
+          {result, _} -> Logger.error("Failed to complete pass of FSM with message #{delivery_tag} :  #{inspect result}")
+        end
+      {:error, reason} -> 
+        Logger.debug("asld;kfjpaosidjfpoaisjdpfoji")
+        #raise an exception to kick the to another orchestrator (hopefully that can process it)
+        raise "Unable to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect reason}"
+    end
   end
 
   @doc """
