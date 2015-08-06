@@ -120,8 +120,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
     Logger.debug("[FSM] determining next step")
     #Setup logging
     state_data = Map.update!(state_data, :deployment, &(%{&1 | output: []}) )
-    
-    IO.inspect(state_data[:deployment])
 
     current_step = Deployment.determine_current_step(state_data[:deployment].plan_tree)
 
@@ -149,13 +147,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
     case Deployment.determine_current_step(state_data[:deployment].plan_tree).status do
       "in_progress" -> 
         workflow = WorkflowApi.get_workflow(ManagerApi.get_api(), state_data[:step_info][:workflow_id]).body
+        Logger.debug("[FSM] Current workflow: #{inspect workflow}")
         status = cond do
-          workflow["workflow_error"] -> "failure"
-          workflow["workflow_completed"] -> "success"
+          workflow[:workflow_error] -> "failure"
+          workflow[:workflow_completed] -> "success"
           true -> "in_progress"
         end
+        Logger.debug("[FSM] Status of workflow determined to be: #{status}")
  
-        state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, %PlanTreeNode{status: "success"}, status)} ))
+        state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, status)} ))
 
         case status do 
           "in_progress" -> 
@@ -174,12 +174,12 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
           201 -> 
             [{"location", workflow_path}] = Enum.filter(response.headers, fn {key, value} -> key == "location" end)
             [ _, _, workflow_id] = String.split(workflow_path, "/")
-            state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, %PlanTreeNode{status: "success"}, "in_progress")} ))
+            state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, "in_progress")} ))
             state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Successfully created workflow #{workflow_id}"]} ))
             state_data = Map.update!(state_data, :step_info, &( Map.put(&1, :workflow_id, workflow_id) ))
           status_code -> 
             Logger.debug("Failed to create workflow")
-            state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, %PlanTreeNode{status: "success"}, "failure")} ))
+            state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, "failure")} ))
             state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Failed to create workflow! Received status #{status_code}"]} ))
         end
 

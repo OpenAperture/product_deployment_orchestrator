@@ -68,11 +68,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
     options = OpenAperture.Messaging.ConnectionOptionsResolver.get_for_broker(ManagerApi.get_api, Configuration.get_current_broker_id)
     subscribe(options, workflow_orchestration_queue, fn(payload, _meta, %{delivery_tag: delivery_tag} = async_info) -> 
       try do
-        Logger.debug("Starting to process request #{delivery_tag} (workflow #{payload[:id]})")
-        IO.inspect(payload)
         MessageManager.track(async_info)
         execute_orchestration(payload, delivery_tag) 
-        Logger.debug("ACKNOWLEDGING THE MESSAGE AFTER SUCCESSFUL PASS")
         acknowledge(delivery_tag)
       catch
         :exit, code   -> 
@@ -96,8 +93,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   """
   @spec execute_orchestration(Map, String.t()) :: term
   def execute_orchestration(payload, delivery_tag) do
-    Logger.debug("In execute_orchestration");
-
     case ProductDeploymentFSM.start_link(payload, delivery_tag) do
       {:ok, pdfsm} ->
         case ProductDeploymentFSM.execute(pdfsm) do 
@@ -105,7 +100,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
           {result, _} -> Logger.error("Failed to complete pass of FSM with message #{delivery_tag} :  #{inspect result}")
         end
       {:error, reason} -> 
-        Logger.debug("asld;kfjpaosidjfpoaisjdpfoji")
         #raise an exception to kick the to another orchestrator (hopefully that can process it)
         raise "Unable to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect reason}"
     end

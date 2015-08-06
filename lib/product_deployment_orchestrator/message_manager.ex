@@ -46,8 +46,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.MessageManager do
     messages = Agent.get(__MODULE__, fn messages -> messages end)
     messages = Map.put(messages, delivery_tag, new_message)
 
-    IO.inspect(messages);
-
     # workload = Enum.reduce Map.keys(messages), [], fn(delivery_tag, workload) ->
     #   workload ++ [%{
     #     description: "Request:  #{delivery_tag}"

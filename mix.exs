@@ -23,7 +23,7 @@ defmodule ProductDeploymentOrchestrator.Mixfile do
         :openaperture_messaging, 
         :openaperture_manager_api,
         :openaperture_product_deployment_orchestrator_api
-        #:openaperture_overseer_api,
+        #:openaperture_overseer_api
       ]
     ]
   end
@@ -41,18 +41,18 @@ defmodule ProductDeploymentOrchestrator.Mixfile do
     [
       {:ex_doc, "0.7.3", only: :test},
       {:earmark, "0.1.17", only: :test},
-      {:openaperture_messaging, git: "https://github.com/OpenAperture/messaging.git", ref: "8c51d099ec79473b23b3c385c072e6bf2219fba7", override: true},
+      {:openaperture_messaging, git: "https://github.com/OpenAperture/messaging.git", ref: "584353928f56777227ff0d70277ba25ceff725ab", override: true},
       {:openaperture_manager_api, git: "https://github.com/OpenAperture/manager_api.git", ref: "5b9e88b7aa00763a89b459ba8b24e83e62785a8a", override: true},
-      {:openaperture_overseer_api, git: "https://github.com/OpenAperture/overseer_api.git", ref: "4d65d2295f2730bc74ec695c32fa0d2478158182", override: true},
+      {:openaperture_overseer_api, git: "https://github.com/OpenAperture/overseer_api.git", ref: "4b9146507ab50789fec4696b96f79642add2b502", override: true},
 
-      {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "2e63b7889c76f4d3b749146f3ebceb01702cf012", override: true},
-      #{:openaperture_product_deployment_orchestrator_api, git: "https://github.com/OpenAperture/product_deployment_orchestrator_api.git", ref: "b4212255ce1166e94dcffe3871db31be760b3914", override: true},
+      {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "714c52b5258f96e741b57c73577431caa6f480b3", override: true},
+      #{:openaperture_product_deployment_orchestrator_api, git: "git@github.com:OpenAperture/product_deployment_orchestrator_api.git", ref: "b4212255ce1166e94dcffe3871db31be760b3914", override: true},
       {:openaperture_product_deployment_orchestrator_api, path: "../product_deployment_orchestrator_api", override: true},
       
-      {:timex_extensions, git: "https://github.com/OpenAperture/timex_extensions.git", ref: "ab9d8820625171afbb80ccba1aa48feeb43dd790", override: true},
+      {:timex_extensions, git: "https://github.com/OpenAperture/timex_extensions.git", ref: "1665c1df90397702daf492c6f940e644085016cd", override: true},
 
       {:timex, "~> 0.12.9"},
-      {:fleet_api, "~> 0.0.6"},
+      {:fleet_api, "~> 0.0.14"},
       {:poison, "~>1.4.0", override: true},
 
       #test dependencies

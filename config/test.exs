@@ -16,7 +16,7 @@ use Mix.Config
 #       metadata: [:user_id]
 
 config :autostart,
-  register_queues: true
+  register_queues: false
 
 config :openaperture_overseer_api,
   module_type: :product_deployment_orchestartor,
