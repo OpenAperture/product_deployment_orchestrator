@@ -52,7 +52,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   
   {:ok, WorkflowFSM} | {:error, reason}
   """
-  @spec start_link(Map, String.t()) :: {:ok, pid} | {:error, String.t()}
+  @spec start_link(Map, String.t) :: {:ok, pid} | {:error, String.t}
   def start_link(payload, delivery_tag) do
     Logger.debug("Start Link called")
     case OrchestratorRequest.from_payload(payload) do

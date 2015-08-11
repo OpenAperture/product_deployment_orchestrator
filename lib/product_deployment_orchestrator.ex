@@ -2,7 +2,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator do
 
 require Logger
 
-@spec start(atom, [any]) :: :ok | {:error, String.t()}
+  @spec start(atom, [any]) :: :ok | {:error, String.t}
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
     Logger.info("Starting OpenAperture.ProductDeploymentOrchestrator.Supervisor...")
@@ -12,6 +12,6 @@ require Logger
     ]
 
     opts = [strategy: :one_for_one, name: __MODULE__]
-    Supervisor.start_link(children, opts) #somethingasdfasdf
+    Supervisor.start_link(children, opts)
   end
 end
