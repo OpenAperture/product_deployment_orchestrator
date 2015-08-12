@@ -12,7 +12,8 @@
                 "pa": [
                        "${project}/_build/dev/lib/fleet_api/ebin",
                        "${project}/_build/dev/lib/amqp/ebin",
-                       "${project}/_build/dev/lib/openaperture_messaging/ebin"]
+                       "${project}/_build/dev/lib/openaperture_messaging/ebin",
+                       "${project}/_build/dev/lib/timex/ebin"]
             }
         }
     }

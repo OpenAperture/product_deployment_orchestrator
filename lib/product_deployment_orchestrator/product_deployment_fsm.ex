@@ -32,12 +32,10 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   #alias OpenAperture.ProductDeploymentOrchestrator.Deployment
   alias OpenAperture.ProductDeploymentOrchestratorApi.Deployment
   alias OpenAperture.ManagerApi.Workflow, as: WorkflowApi
-  alias OpenAperture.ManagerApi.Deployment, as: DeploymentApi
   alias OpenAperture.ManagerApi
 
   alias OpenAperture.ProductDeploymentOrchestratorApi.Request, as: OrchestratorRequest
   alias OpenAperture.ProductDeploymentOrchestratorApi.ProductDeploymentOrchestrator.Publisher, as: OrchestratorPublisher
-  alias OpenAperture.ProductDeploymentOrchestratorApi.PlanTreeNode
 
   @doc """
   Method to start a WorkflowFSM
@@ -172,7 +170,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
         case response.status do 
           201 -> 
-            [{"location", workflow_path}] = Enum.filter(response.headers, fn {key, value} -> key == "location" end)
+            [{"location", workflow_path}] = Enum.filter(response.headers, fn {key, _value} -> key == "location" end)
             [ _, _, workflow_id] = String.split(workflow_path, "/")
             state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, "in_progress")} ))
             state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Successfully created workflow #{workflow_id}"]} ))
@@ -184,7 +182,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
         end
 
         Deployment.save(state_data[:deployment])
-        request = state_data
         {:reply, :in_progress, :build_deploy, state_data}
     end
   end
@@ -222,7 +219,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   :ok
   """
   @spec terminate(term, term, Map) :: :ok
-  def terminate(_reason, _current_state, state_data) do
+  def terminate(_reason, _current_state, _state_data) do
     Logger.debug("Deployment orchestration has finished normally")
     :ok
   end

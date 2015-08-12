@@ -34,7 +34,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.MessageManager do
     * :subscription_handler
     * :delivery_tag
   """
-  @spec track(Map) :: term
+  @spec track(Map) :: Map
   def track(%{subscription_handler: subscription_handler, delivery_tag: delivery_tag} = _async_info) do
     new_message = %{
       process: self(),
