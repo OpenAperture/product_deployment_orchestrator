@@ -47,7 +47,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.BuildDeploy.Publisher do
 
   :ok | {:error, reason}   
   """
-  @spec build_deploy(String.t, String.t, Map) :: :ok
+  @spec build_deploy(String.t, String.t, map) :: :ok
   def build_deploy(delivery_tag, messaging_exchange_id, payload) do
     GenServer.cast(__MODULE__, {:build_deploy, delivery_tag, messaging_exchange_id, payload})
   end
@@ -67,7 +67,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.BuildDeploy.Publisher do
   would be sent by another process, which could cause
   messages to arrive out of order.
   """
-  @spec handle_cast({:build_deploy, String.t, String.t, Map}, Map) :: {:noreply, Map}
+  @spec handle_cast({:build_deploy, String.t, String.t, map}, map) :: {:noreply, map}
   def handle_cast({:build_deploy, _delivery_tag, messaging_exchange_id, payload}, state) do
     build_queue = QueueBuilder.build(ManagerApi.get_api, "build_deploy", messaging_exchange_id)
 

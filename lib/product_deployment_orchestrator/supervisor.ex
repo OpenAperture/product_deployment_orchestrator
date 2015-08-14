@@ -39,7 +39,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Supervisor do
   {:ok, state} | {:ok, state, timeout} | :ignore | {:stop, reason}
   """  
   @spec init(term) :: {:ok, term} | {:ok, term, term} | :ignore | {:stop, String.t}
-  def init([]) do
+  def init(_) do
     import Supervisor.Spec
 
     children = [

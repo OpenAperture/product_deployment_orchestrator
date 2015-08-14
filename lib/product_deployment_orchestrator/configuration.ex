@@ -76,7 +76,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   # 
   # Value
   # 
-  @spec get_config(String.t, Atom, Atom) :: String.t
+  @spec get_config(String.t, atom, atom) :: String.t
   defp get_config(env_name, application_config, config_name) do
     result = System.get_env(env_name) || Application.get_env(application_config, config_name)
     IO.inspect(result)

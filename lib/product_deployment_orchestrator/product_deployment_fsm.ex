@@ -50,46 +50,49 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   
   {:ok, WorkflowFSM} | {:error, reason}
   """
-  @spec start_link(Map, String.t) :: {:ok, pid} | {:error, String.t}
+  @spec start_link(map, String.t) :: {:ok, pid} | {:error, String.t}
   def start_link(payload, delivery_tag) do
     Logger.debug("Start Link called")
-    case OrchestratorRequest.from_payload(payload) do
-      {:error, reason} -> {:error, reason}
-      request -> 
-        :gen_fsm.start_link(__MODULE__, %{
-          step_info: request.step_info, 
-          deployment: request.deployment,
-          delivery_tag: delivery_tag,
-          product_deployment_orchestration_queue: request.product_deployment_orchestration_queue,
-          product_deployment_orchestration_exchange_id: request.product_deployment_orchestration_exchange_id,
-          product_deployment_orchestration_broker_id: request.product_deployment_orchestration_broker_id,
-          completed: request.completed
-          }, [])
-    end
+    request = OrchestratorRequest.from_payload(payload)
+    :gen_fsm.start_link(__MODULE__, %{
+      step_info: request.step_info, 
+      deployment: request.deployment,
+      delivery_tag: delivery_tag,
+      product_deployment_orchestration_queue: request.product_deployment_orchestration_queue,
+      product_deployment_orchestration_exchange_id: request.product_deployment_orchestration_exchange_id,
+      product_deployment_orchestration_broker_id: request.product_deployment_orchestration_broker_id,
+      completed: request.completed
+      }, [])
   end
 
+  @spec init(term) :: {:ok, :determine_next_step, term}
   def init(state_data) do
     {:ok, :determine_next_step, state_data}
   end
 
+  @spec handle_info(term, atom, term) :: {:next_state, atom, term}
   def handle_info(_info, current_state, state_data) do
     {:next_state,current_state,state_data}
   end   
 
+  @spec handle_event(term, atom, term) :: {:next_state, atom, term}
   def handle_event(_event, current_state, state_data) do
     Logger.debug("Proceeding to state: #{current_state}")
     {:next_state,current_state,state_data}
   end   
 
+  @spec handle_sync_event(term, term, atom, term) :: {:next_state, atom, term}
   def handle_sync_event(_event, _from, current_state, state_data) do
     Logger.debug("Proceeding to state: #{current_state}")
     {:next_state, current_state, state_data}
   end 
 
+  @spec code_change(term, atom, term, term) :: {:ok, atom, term}
   def code_change(_old_vsn, current_state, state_data, _opts) do
     {:ok, current_state, state_data}
   end
 
+  @spec execute(pid) :: {:completed, nil}
   def execute(fsm) do
     case :gen_fsm.sync_send_event(fsm, :execute_next_deployment_step, 15000) do
       :in_progress -> 
@@ -114,6 +117,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   
   {:ok, :workflow_starting, state_data}
   """
+  @spec determine_next_step(term, term, term) :: {:reply, :in_progress, :build_deploy | :deployment_completed, term} | {:stop, :normal, {:error, String.t}, term}
   def determine_next_step(_event, _from, state_data) do
     Logger.debug("[FSM] determining next step")
     #Setup logging
@@ -140,6 +144,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
     end
   end
 
+  @spec build_deploy(term, term, term) :: {:reply, :in_progress, :build_deploy | :build_deploy_in_progress | :deployment_step_completed, term}
   def build_deploy(_current_state, _from, state_data) do
     Logger.debug("In build deploy")
     case Deployment.determine_current_step(state_data[:deployment].plan_tree).status do
@@ -186,16 +191,19 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
     end
   end
 
+  @spec build_deploy_in_progress(term, term, term) :: {:stop, :normal, {:awaiting_build_deploy, term}, term}
   def build_deploy_in_progress(_reason, _current_state, state_data) do 
     Deployment.save(state_data[:deployment])
     {:stop, :normal, {:awaiting_build_deploy, state_data}, state_data}
   end
 
+  @spec deployment_step_completed(term, term, term) :: {:stop, :normal, {:completed, term}, term}
   def deployment_step_completed(_reason, _current_state, state_data) do 
     OrchestratorPublisher.execute_orchestration(state_data)
     {:stop, :normal, {:completed, state_data[:deployment]}, state_data}
   end 
 
+  @spec deployment_completed(term, term, term) :: {:stop, :normal, {:completed, term}, term}
   def deployment_completed(_reason, _current_state, state_data) do 
     state_data = Map.update!(state_data, :deployment, &(%{&1 | completed: true}) )
     state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Workflow has completed"]} ))
@@ -218,7 +226,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   
   :ok
   """
-  @spec terminate(term, term, Map) :: :ok
+  @spec terminate(term, term, term) :: :ok
   def terminate(_reason, _current_state, _state_data) do
     Logger.debug("Deployment orchestration has finished normally")
     :ok
