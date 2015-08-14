@@ -54,7 +54,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   def start_link(payload, delivery_tag) do
     Logger.debug("Start Link called")
     request = OrchestratorRequest.from_payload(payload)
-    :gen_fsm.start_link(__MODULE__, %{
+    %{
       step_info: request.step_info, 
       deployment: request.deployment,
       delivery_tag: delivery_tag,
@@ -62,7 +62,13 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
       product_deployment_orchestration_exchange_id: request.product_deployment_orchestration_exchange_id,
       product_deployment_orchestration_broker_id: request.product_deployment_orchestration_broker_id,
       completed: request.completed
-      }, [])
+      }
+    |> __MODULE__.start_link_with_args()
+  end
+
+  @spec start_link_with_args(map) :: {:ok, pid} | {:error, String.t}
+  def start_link_with_args(args) do
+    :gen_fsm.start_link(__MODULE__, args, [])
   end
 
   @spec init(term) :: {:ok, :determine_next_step, term}

@@ -78,8 +78,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
   test "start_link - failure" do
     :meck.new(OrchestratorRequest)
     :meck.expect(OrchestratorRequest, :from_payload, fn _ -> %OrchestratorRequest{} end)
-    :meck.new(:gen_fsm, [:unstick])
-    :meck.expect(:gen_fsm, :start_link, fn _,_,_ -> {:error, "bad news bears"} end)
+    :meck.new(ProductDeploymentFSM, [:passthrough])
+    :meck.expect(ProductDeploymentFSM, :start_link_with_args, fn _ -> {:error, "bad news bears"} end)
 
     {result, reason} = ProductDeploymentFSM.start_link(%{}, "#{UUID.uuid1()}")
     assert result == :error
