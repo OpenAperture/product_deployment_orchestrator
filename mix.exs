@@ -46,7 +46,7 @@ defmodule ProductDeploymentOrchestrator.Mixfile do
       {:openaperture_overseer_api, git: "https://github.com/OpenAperture/overseer_api.git", ref: "4b9146507ab50789fec4696b96f79642add2b502", override: true},
 
       {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "714c52b5258f96e741b57c73577431caa6f480b3", override: true},
-      {:openaperture_product_deployment_orchestrator_api, git: "git@github.com:OpenAperture/product_deployment_orchestrator_api.git", ref: "88ec228951bc3d0c6ed571d70c7f2514bbb1e335", override: true},
+      {:openaperture_product_deployment_orchestrator_api, git: "git@github.com:OpenAperture/product_deployment_orchestrator_api.git", ref: "f2d15ef05c7638e968bf2eb544d6c14f3cc1272e", override: true},
       
       {:timex_extensions, git: "https://github.com/OpenAperture/timex_extensions.git", ref: "1665c1df90397702daf492c6f940e644085016cd", override: true},
 

@@ -16,7 +16,7 @@
   "openaperture_manager_api": {:git, "https://github.com/OpenAperture/manager_api.git", "81e7699148e1a88b4764784da2b7626a75da2293", [ref: "81e7699148e1a88b4764784da2b7626a75da2293"]},
   "openaperture_messaging": {:git, "https://github.com/OpenAperture/messaging.git", "c2b0e0bd43fb72a6673e853fe238062695c93a29", [ref: "c2b0e0bd43fb72a6673e853fe238062695c93a29"]},
   "openaperture_overseer_api": {:git, "https://github.com/OpenAperture/overseer_api.git", "4b9146507ab50789fec4696b96f79642add2b502", [ref: "4b9146507ab50789fec4696b96f79642add2b502"]},
-  "openaperture_product_deployment_orchestrator_api": {:git, "git@github.com:OpenAperture/product_deployment_orchestrator_api.git", "88ec228951bc3d0c6ed571d70c7f2514bbb1e335", [ref: "88ec228951bc3d0c6ed571d70c7f2514bbb1e335"]},
+  "openaperture_product_deployment_orchestrator_api": {:git, "git@github.com:OpenAperture/product_deployment_orchestrator_api.git", "f2d15ef05c7638e968bf2eb544d6c14f3cc1272e", [ref: "f2d15ef05c7638e968bf2eb544d6c14f3cc1272e"]},
   "poison": {:hex, :poison, "1.4.0"},
   "rabbit_common": {:hex, :rabbit_common, "3.5.0"},
   "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.5"},
