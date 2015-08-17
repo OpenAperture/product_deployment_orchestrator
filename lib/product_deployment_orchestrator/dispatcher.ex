@@ -95,10 +95,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   def execute_orchestration(payload, delivery_tag) do
     case ProductDeploymentFSM.start_link(payload, delivery_tag) do
       {:ok, pdfsm} ->
-        case ProductDeploymentFSM.execute(pdfsm) do 
-          {:completed, _} -> Logger.debug("Successfully completed pass of FSM with message #{delivery_tag}")
-          {result, _} -> Logger.error("Failed to complete pass of FSM with message #{delivery_tag} :  #{inspect result}")
-        end
+        {:completed, _} = ProductDeploymentFSM.execute(pdfsm)
+        Logger.debug("Successfully completed pass of FSM with message #{delivery_tag}")
       {:error, reason} -> 
         #raise an exception to kick the to another orchestrator (hopefully that can process it)
         raise "Unable to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect reason}"

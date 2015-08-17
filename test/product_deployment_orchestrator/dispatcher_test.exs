@@ -94,13 +94,13 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.DispatcherTests do
     :meck.expect(ConnectionPool, :subscribe, fn _, _, _, _ -> :ok end)
 
     :meck.new(ProductDeploymentFSM, [:passthrough])
-    :meck.expect(ProductDeploymentFSM, :start_link, fn _, _ -> {:ok, nil} end)    
+    :meck.expect(ProductDeploymentFSM, :start_link, fn _, _ -> {:error, "bad news bears"} end)    
     :meck.expect(ProductDeploymentFSM, :execute, fn _ -> {:error, "bad news bears"} end)
 
     payload = %{
       id: 123
     }
-    Dispatcher.execute_orchestration(payload, "123abc")
+    assert_raise RuntimeError, "Unable to process request 123abc (workflow 123):  \"bad news bears\"", fn -> Dispatcher.execute_orchestration(payload, "123abc") end
   after
     :meck.unload(ProductDeploymentFSM)
     :meck.unload(ConnectionPool)

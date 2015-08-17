@@ -98,7 +98,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
     {:ok, current_state, state_data}
   end
 
-  @spec execute(pid) :: {:completed, nil}
+  @spec execute(pid) :: {:completed, nil | Deployment.t}
   def execute(fsm) do
     case :gen_fsm.sync_send_event(fsm, :execute_next_deployment_step, 15000) do
       :in_progress -> 
@@ -107,8 +107,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
         :timer.sleep(5000)
         OrchestratorPublisher.execute_orchestration(request)
         {:completed, nil}
-      {result, workflow} -> 
-        {result, workflow}
+      {:completed, workflow} -> 
+        {:completed, workflow}
     end
   end
 
