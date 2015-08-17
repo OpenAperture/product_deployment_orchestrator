@@ -72,21 +72,20 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     assert result == :ok
     assert fsm != nil
   after
-    :meck.unload(OrchestratorRequest)   
+    :meck.unload
   end
 
   test "start_link - failure" do
-    :meck.new(OrchestratorRequest, [:passthrough])
-    :meck.expect(OrchestratorRequest, :from_payload, fn _ -> {:error, "bad news bears"} end)
-    
-    payload = %{
-    }
+    :meck.new(OrchestratorRequest)
+    :meck.expect(OrchestratorRequest, :from_payload, fn _ -> %OrchestratorRequest{} end)
+    :meck.new(ProductDeploymentFSM, [:passthrough])
+    :meck.expect(ProductDeploymentFSM, :start_link_with_args, fn _ -> {:error, "bad news bears"} end)
 
-    {result, reason} = ProductDeploymentFSM.start_link(payload, "#{UUID.uuid1()}")
+    {result, reason} = ProductDeploymentFSM.start_link(%{}, "#{UUID.uuid1()}")
     assert result == :error
     assert reason == "bad news bears"
   after
-    :meck.unload(OrchestratorRequest)   
+    :meck.unload
   end
 
   # ============================
@@ -170,7 +169,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     assert response_data == :build_deploy
     assert state[:deployment].output == []
   after
-    :meck.unload(Deployment)
+    :meck.unload
   end
 
   test "determine_next_step - no step in progress : deployment finished" do 
@@ -224,7 +223,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     assert response_data == :deployment_completed
     assert state[:deployment].output == []
   after
-    :meck.unload(Deployment)
+    :meck.unload
   end
 
    test "determine_next_step -  error : step type does not match a machine state" do 
@@ -305,7 +304,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     assert response_data == {:error, "No action match for warblegarble"}
     assert state[:deployment].output == []
   after
-    :meck.unload(Deployment)
+    :meck.unload
   end
 
   # ============================

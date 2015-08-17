@@ -21,7 +21,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Supervisor do
 
   {:ok, pid} | {:error, reason}
   """
-  @spec start_link() :: {:ok, pid} | {:error, String.t()} 
+  @spec start_link() :: {:ok, pid} | {:error, String.t} 
   def start_link do
     Logger.info("Starting OpenAperture.ProductDeploymentOrchestrator.Supervisor...")
     :supervisor.start_link(__MODULE__, [])
@@ -38,8 +38,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Supervisor do
 
   {:ok, state} | {:ok, state, timeout} | :ignore | {:stop, reason}
   """  
-  @spec init(term) :: {:ok, term} | {:ok, term, term} | :ignore | {:stop, String.t()}
-  def init([]) do
+  @spec init(term) :: {:ok, term} | {:ok, term, term} | :ignore | {:stop, String.t}
+  def init(_) do
     import Supervisor.Spec
 
     children = [

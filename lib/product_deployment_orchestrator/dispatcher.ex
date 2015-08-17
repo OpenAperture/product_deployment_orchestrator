@@ -27,7 +27,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   ## Return Values
   {:ok, pid} | {:error, reason}
   """
-  @spec start_link() :: {:ok, pid} | {:error, String.t()}   
+  @spec start_link() :: {:ok, pid} | {:error, String.t}   
   def start_link do
     case GenServer.start_link(__MODULE__, %{}, name: __MODULE__) do
       {:error, reason} -> 
@@ -59,7 +59,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   ## Return Value
   :ok | {:error, reason}
   """
-  @spec register_queues() :: :ok | {:error, String.t()}
+  @spec register_queues() :: :ok | {:error, String.t}
   def register_queues do
     Logger.debug("Registering WorkflowOrchestrator queues...")
     #workflow_orchestration_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
@@ -91,14 +91,12 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   The `payload` option is the Map of HipChat options
   The `delivery_tag` option is the unique identifier of the message
   """
-  @spec execute_orchestration(Map, String.t()) :: term
+  @spec execute_orchestration(map, String.t) :: term
   def execute_orchestration(payload, delivery_tag) do
     case ProductDeploymentFSM.start_link(payload, delivery_tag) do
       {:ok, pdfsm} ->
-        case ProductDeploymentFSM.execute(pdfsm) do 
-          {:completed, _} -> Logger.debug("Successfully completed pass of FSM with message #{delivery_tag}")
-          {result, _} -> Logger.error("Failed to complete pass of FSM with message #{delivery_tag} :  #{inspect result}")
-        end
+        {:completed, _} = ProductDeploymentFSM.execute(pdfsm)
+        Logger.debug("Successfully completed pass of FSM with message #{delivery_tag}")
       {:error, reason} -> 
         #raise an exception to kick the to another orchestrator (hopefully that can process it)
         raise "Unable to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect reason}"
@@ -110,7 +108,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   ## Options
   The `delivery_tag` option is the unique identifier of the message
   """
-  @spec acknowledge(String.t()) :: term
+  @spec acknowledge(String.t) :: term
   def acknowledge(delivery_tag) do
     message = MessageManager.remove(delivery_tag)
     unless message == nil do
@@ -124,7 +122,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   The `delivery_tag` option is the unique identifier of the message
   The `redeliver` option can be used to requeue a message
   """
-  @spec reject(String.t(), term) :: term
+  @spec reject(String.t, term) :: term
   def reject(delivery_tag, redeliver \\ false) do
     message = MessageManager.remove(delivery_tag)
     unless message == nil do

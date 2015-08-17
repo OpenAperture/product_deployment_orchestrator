@@ -18,9 +18,9 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.MessageManager do
   Creates a `GenServer` representing Docker host cluster.
 
   ## Return values
-  {:ok, pid} | {:error, String.t()}
+  {:ok, pid} | {:error, String.t}
   """
-  @spec start_link() :: {:ok, pid} | {:error, String.t()} 
+  @spec start_link() :: {:ok, pid} | {:error, String.t} 
   def start_link() do
     Agent.start_link(fn -> %{} end, name: __MODULE__)
   end
@@ -34,7 +34,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.MessageManager do
     * :subscription_handler
     * :delivery_tag
   """
-  @spec track(Map) :: term
+  @spec track(map) :: map
   def track(%{subscription_handler: subscription_handler, delivery_tag: delivery_tag} = _async_info) do
     new_message = %{
       process: self(),
@@ -69,7 +69,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.MessageManager do
 
   Map containing the subscription_handler and delivery_tag
   """
-  @spec remove(String.t()) :: Map
+  @spec remove(String.t) :: map | nil
   def remove(delivery_tag) do
     messages = Agent.get(__MODULE__, fn messages -> messages end)
     deleted_message = messages[delivery_tag]
