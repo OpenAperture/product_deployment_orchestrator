@@ -14,3 +14,21 @@ use Mix.Config
 #       level: :info,
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
+
+config :autostart,
+  register_queues: false
+
+config :openaperture_overseer_api,
+  module_type: :product_deployment_orchestartor,
+  exchange_id: 99,
+  broker_id: 99
+
+config :openaperture_manager_api, 
+  manager_url: "http://myhost.co",
+  oauth_login_url: "http://auth.myhost.co",
+  oauth_client_id: "12345",
+  oauth_client_secret: "67890"
+
+config :openaperture_product_deployment_orchestrator,
+  exchange_id: 99,
+  broker_id: 99

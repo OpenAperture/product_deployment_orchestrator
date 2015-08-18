@@ -16,7 +16,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   """ 
   @spec get_current_exchange_id() :: String.t
   def get_current_exchange_id do
-    get_config("EXCHANGE_ID", :openaperture_product_deployment_orchestrator, :exchange_id)
+    get_config(:openaperture_product_deployment_orchestrator, :exchange_id)
   end
 
   @doc """
@@ -30,7 +30,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   """ 
   @spec get_current_broker_id() :: String.t
   def get_current_broker_id do
-    get_config("BROKER_ID", :openaperture_product_deployment_orchestrator, :broker_id)
+    get_config(:openaperture_product_deployment_orchestrator, :broker_id)
   end
 
   @doc """
@@ -44,7 +44,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   """ 
   @spec get_current_queue_name() :: String.t
   def get_current_queue_name do
-    get_config("QUEUE_NAME", :openaperture_overseer, :queue_name)
+    get_config(:openaperture_overseer, :queue_name)
   end
 
   @doc """
@@ -58,7 +58,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   """ 
   @spec get_ui_url() :: String.t
   def get_ui_url do
-    get_config("UI_URL", :openaperture_overseer, :ui_url)
+    get_config(:openaperture_overseer, :ui_url)
   end
 
   @doc false
@@ -76,10 +76,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   # 
   # Value
   # 
-  @spec get_config(String.t, atom, atom) :: String.t
-  defp get_config(env_name, application_config, config_name) do
-    result = System.get_env(env_name) || Application.get_env(application_config, config_name)
-    IO.inspect(result)
-    result
+  @spec get_config(atom, atom) :: String.t
+  defp get_config(application_config, config_name) do
+    Application.get_env(application_config, config_name)
   end  
 end
