@@ -21,4 +21,23 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
+
+config :autostart,
+  register_queues: true
+
+config :openaperture_overseer_api,
+  module_type: :product_deployment_orchestartor,
+  exchange_id: System.get_env("EXCHANGE_ID"),
+  broker_id: System.get_env("BROKER_ID")
+
+config :openaperture_manager_api, 
+  manager_url: System.get_env("MANAGER_URL"),
+  oauth_login_url: System.get_env("OAUTH_LOGIN_URL"),
+  oauth_client_id: System.get_env("OAUTH_CLIENT_ID"),
+  oauth_client_secret: System.get_env("OAUTH_CLIENT_SECRET")
+
+config :openaperture_product_deployment_orchestrator,
+  exchange_id: System.get_env("EXCHANGE_ID"),
+  broker_id: System.get_env("BROKER_ID")
+
 import_config "#{Mix.env}.exs"

@@ -15,21 +15,3 @@ use Mix.Config
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 
-config :autostart,
-  register_queues: true
-
-config :openaperture_overseer_api,
-  module_type: :product_deployment_orchestartor,
-  exchange_id: System.get_env("EXCHANGE_ID"),
-  broker_id: System.get_env("BROKER_ID")
-
-config :openaperture_manager_api, 
-  manager_url: System.get_env("MANAGER_URL"),
-  oauth_login_url: System.get_env("OAUTH_LOGIN_URL"),
-  oauth_client_id: System.get_env("OAUTH_CLIENT_ID"),
-  oauth_client_secret: System.get_env("OAUTH_CLIENT_SECRET")
-
-config :openaperture_product_deployment_orchestrator,
-  queue_name: "aws:065131256760.product_deployment_orchestrator",
-  exchange_id: 5,
-  broker_id: 2
