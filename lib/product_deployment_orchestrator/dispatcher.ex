@@ -61,12 +61,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   """
   @spec register_queues() :: :ok | {:error, String.t}
   def register_queues do
-    Logger.debug("Registering WorkflowOrchestrator queues...")
+    Logger.debug("Registering ProductDeploymentOrchestrator queues...")
     #workflow_orchestration_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
-    workflow_orchestration_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
+    product_deployment_orchestrator_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
+
+    IO.inspect(product_deployment_orchestrator_queue)
+    Logger.debug("Queue.name = #{inspect product_deployment_orchestrator_queue.name}")
 
     options = OpenAperture.Messaging.ConnectionOptionsResolver.get_for_broker(ManagerApi.get_api, Configuration.get_current_broker_id)
-    subscribe(options, workflow_orchestration_queue, fn(payload, _meta, %{delivery_tag: delivery_tag} = async_info) -> 
+    subscribe(options, product_deployment_orchestrator_queue, fn(payload, _meta, %{delivery_tag: delivery_tag} = async_info) -> 
       try do
         MessageManager.track(async_info)
         execute_orchestration(payload, delivery_tag) 

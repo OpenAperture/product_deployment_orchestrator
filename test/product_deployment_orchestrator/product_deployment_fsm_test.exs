@@ -1,10 +1,14 @@
+require Logger
+
 defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
   use ExUnit.Case
   use ExVCR.Mock, adapter: ExVCR.Adapter.Httpc, options: [clear_mock: true]
+  use Timex
 
   alias OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM
 
   alias OpenAperture.ProductDeploymentOrchestratorApi.Deployment
+  alias OpenAperture.ProductDeploymentOrchestratorApi.DeploymentStep
   alias OpenAperture.ManagerApi.Workflow, as: WorkflowApi
   alias OpenAperture.ManagerApi.Deployment, as: DeploymentApi
   alias OpenAperture.ManagerApi
@@ -157,7 +161,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
       },
       step_info: %{}
@@ -211,7 +215,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: "success"
         },
-        output: nil,
+        output: [],
         completed: false,
       },
       step_info: %{}
@@ -292,7 +296,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
       },
       step_info: %{}
@@ -338,7 +342,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         on_failure_step: nil,
         status: nil
       },
-      status: "in_progress"
+      status: "in_progress",
     } end)
 
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
@@ -381,8 +385,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
@@ -423,13 +434,13 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         on_failure_step: nil,
         status: nil
       },
-      status: "in_progress"
+      status: "in_progress",
     } end)
 
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
 
     :meck.new(WorkflowApi, [:passthrough])
-    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{workflow_completed: true}} end)
+    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{"workflow_completed" => true}} end)
 
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
@@ -466,8 +477,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
@@ -508,13 +526,13 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         on_failure_step: nil,
         status: nil
       },
-      status: "in_progress"
+      status: "in_progress",
     } end)
 
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
 
     :meck.new(WorkflowApi)
-    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{workflow_error: true}} end)
+    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{"workflow_error" => true}} end)
 
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
@@ -551,8 +569,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
@@ -595,10 +620,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
       },
       status: nil
     } end)
-
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
-
-    :meck.expect(Deployment, :save, fn _ -> nil end)
+    :meck.expect(Deployment, :save, fn deployment -> deployment end)
 
     :meck.new(WorkflowApi, [])
     :meck.expect(WorkflowApi, :create_workflow, fn _, _, _, _, _ -> %Response{
@@ -606,6 +629,9 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
       headers: [{"location", "something/something/1"}]
     } end)
 
+    :meck.new(ProductDeploymentFSM, [:passthrough])
+    :meck.expect(ProductDeploymentFSM, :create_deployment_step, fn _, _ -> %Response{body: ""} end)
+    
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
@@ -643,9 +669,19 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         },
         output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
+
+    :meck.new(DeploymentStep, [])
+    :meck.expect(DeploymentStep, :from_response_body, fn _, _ -> %DeploymentStep{} end)
 
     {action, type, response_data, state} = ProductDeploymentFSM.build_deploy(nil, nil, state_data)
     assert action == :reply
@@ -697,6 +733,9 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
       status: 500,
     } end)
 
+    :meck.new(ProductDeploymentFSM, [:passthrough])
+    :meck.expect(ProductDeploymentFSM, :create_deployment_step, fn _, _ -> %Response{body: ""} end)
+
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
@@ -734,14 +773,24 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         },
         output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
 
+    :meck.new(DeploymentStep, [])
+    :meck.expect(DeploymentStep, :from_response_body, fn _, _ -> %DeploymentStep{} end)
+
     {action, type, response_data, state} = ProductDeploymentFSM.build_deploy(nil, nil, state_data)
     assert action == :reply
     assert type == :in_progress
-    assert response_data == :build_deploy
+    assert response_data == :deployment_step_completed
     assert state[:step_info][:workflow_id] == nil
     assert state[:deployment].output != []
   after

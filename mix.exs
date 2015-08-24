@@ -42,12 +42,14 @@ defmodule ProductDeploymentOrchestrator.Mixfile do
       {:ex_doc, "0.7.3", only: :test},
       {:earmark, "0.1.17", only: :test},
       {:openaperture_messaging, git: "https://github.com/OpenAperture/messaging.git", ref: "3d3a84eabf4ba0a3a827a61c4d99cdbf0ab49a0d", override: true},
-      {:openaperture_manager_api, git: "https://github.com/OpenAperture/manager_api.git", ref: "81e7699148e1a88b4764784da2b7626a75da2293", override: true},
+      #{:openaperture_manager_api, git: "https://github.com/OpenAperture/manager_api.git", ref: "8f22b612ed97360436008296ecaf8945363d8763", override: true},
+      {:openaperture_manager_api, path: "../manager_api", override: true},
       {:openaperture_overseer_api, git: "https://github.com/OpenAperture/overseer_api.git", ref: "4b9146507ab50789fec4696b96f79642add2b502", override: true},
 
       {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "714c52b5258f96e741b57c73577431caa6f480b3", override: true},
-      {:openaperture_product_deployment_orchestrator_api, git: "https://github.com/OpenAperture/product_deployment_orchestrator_api.git", ref: "466c1d8b5e73bc7d20316298d716d88c17162f53", override: true},
-      
+      #{:openaperture_product_deployment_orchestrator_api, git: "https://github.com/OpenAperture/product_deployment_orchestrator_api.git", ref: "466c1d8b5e73bc7d20316298d716d88c17162f53", override: true},
+      {:openaperture_product_deployment_orchestrator_api, path: "../product_deployment_orchestrator_api", override: true},
+
       {:timex_extensions, git: "https://github.com/OpenAperture/timex_extensions.git", ref: "1665c1df90397702daf492c6f940e644085016cd", override: true},
 
       {:timex, "~> 0.12.9"},

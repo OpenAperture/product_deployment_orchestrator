@@ -44,7 +44,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   """ 
   @spec get_current_queue_name() :: String.t
   def get_current_queue_name do
-    get_config(:openaperture_overseer, :queue_name)
+    System.get_env("QUEUE_NAME") || get_config(:openaperture_overseer, :queue_name)
   end
 
   @doc """

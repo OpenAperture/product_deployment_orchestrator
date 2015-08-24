@@ -31,7 +31,10 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
   #alias OpenAperture.ProductDeploymentOrchestrator.Deployment
   alias OpenAperture.ProductDeploymentOrchestratorApi.Deployment
+  alias OpenAperture.ProductDeploymentOrchestratorApi.DeploymentStep
   alias OpenAperture.ManagerApi.Workflow, as: WorkflowApi
+  alias OpenAperture.ManagerApi.ProductDeployment, as: ProductDeploymentApi
+  alias OpenAperture.ManagerApi.ProductDeploymentStep, as: ProductDeploymentStepApi
   alias OpenAperture.ManagerApi
 
   alias OpenAperture.ProductDeploymentOrchestratorApi.Request, as: OrchestratorRequest
@@ -57,12 +60,13 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
     %{
       step_info: request.step_info, 
       deployment: request.deployment,
+      deployment_step: request.deployment_step,
       delivery_tag: delivery_tag,
       product_deployment_orchestration_queue: request.product_deployment_orchestration_queue,
       product_deployment_orchestration_exchange_id: request.product_deployment_orchestration_exchange_id,
       product_deployment_orchestration_broker_id: request.product_deployment_orchestration_broker_id,
       completed: request.completed
-      }
+    }
     |> __MODULE__.start_link_with_args()
   end
 
@@ -153,13 +157,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   @spec build_deploy(term, term, term) :: {:reply, :in_progress, :build_deploy | :build_deploy_in_progress | :deployment_step_completed, term}
   def build_deploy(_current_state, _from, state_data) do
     Logger.debug("In build deploy")
-    case Deployment.determine_current_step(state_data[:deployment].plan_tree).status do
+    current_step = Deployment.determine_current_step(state_data[:deployment].plan_tree)
+
+    case current_step.status do
       "in_progress" -> 
         workflow = WorkflowApi.get_workflow(ManagerApi.get_api(), state_data[:step_info][:workflow_id]).body
         Logger.debug("[FSM] Current workflow: #{inspect workflow}")
         status = cond do
-          workflow[:workflow_error] -> "failure"
-          workflow[:workflow_completed] -> "success"
+          workflow["workflow_error"] -> "failure"
+          workflow["workflow_completed"] -> "success"
           true -> "in_progress"
         end
         Logger.debug("[FSM] Status of workflow determined to be: #{status}")
@@ -168,54 +174,83 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
         case status do 
           "in_progress" -> 
+            state_data = append_output_log(state_data, :deployment_step, "Awaiting completion of build_deploy workflow: #{state_data[:step_info][:workflow_id]}")
             {:reply, :in_progress, :build_deploy_in_progress, state_data}
-          _ -> 
+          completion_status -> 
+            state_data = append_output_log(state_data, :deployment_step, "Workflow: #{state_data[:step_info][:workflow_id]} has finished in #{completion_status}!")
+            state_data = Map.update!(state_data, :deployment_step, &( %{&1 | successful: completion_status == "success"} ))
+            state_data = append_output_log(state_data, :deployment, "Deployment Step: #{state_data[:deployment_step].id} has completed")
             {:reply, :in_progress, :deployment_step_completed, state_data}
         end
       nil -> 
         Logger.debug("Creating new workflow!")
-        current_step = Deployment.determine_current_step(state_data[:deployment].plan_tree)
+
+        #Log step start to manager
+        state_data = Map.update!(state_data, :deployment_step, fn _ -> __MODULE__.create_deployment_step(state_data, current_step).body |> DeploymentStep.from_response_body(state_data[:deployment].product_name) end)
+        
         options = Map.merge(current_step.options, current_step.execution_options)
 
-        response = WorkflowApi.create_workflow(ManagerApi.get_api(), options, %{}, [], [])
+        Logger.debug("Creating workflow with these options: #{inspect options}")
+
+        response = WorkflowApi.create_workflow(ManagerApi.get_api, options, %{}, [], [])
 
         case response.status do 
           201 -> 
             [{"location", workflow_path}] = Enum.filter(response.headers, fn {key, _value} -> key == "location" end)
             [ _, _, workflow_id] = String.split(workflow_path, "/")
             state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, "in_progress")} ))
-            state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Successfully created workflow #{workflow_id}"]} ))
+            state_data = append_output_log(state_data, :deployment, "Successfully created workflow #{workflow_id}")
             state_data = Map.update!(state_data, :step_info, &( Map.put(&1, :workflow_id, workflow_id) ))
+            state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
+            {:reply, :in_progress, :build_deploy, state_data}
           status_code -> 
-            Logger.debug("Failed to create workflow")
+            Logger.debug("Failed to create workflow: #{status_code}")
             state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, "failure")} ))
-            state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Failed to create workflow! Received status #{status_code}"]} ))
-        end
-
-        Deployment.save(state_data[:deployment])
-        {:reply, :in_progress, :build_deploy, state_data}
+            state_data = append_output_log(state_data, :deployment, "Failed to create workflow! Received status #{status_code}")
+            {:reply, :in_progress, :deployment_step_completed, state_data}
+        end 
     end
   end
 
   @spec build_deploy_in_progress(term, term, term) :: {:stop, :normal, {:awaiting_build_deploy, term}, term}
   def build_deploy_in_progress(_reason, _current_state, state_data) do 
-    Deployment.save(state_data[:deployment])
+    state_data = Map.update!(state_data, :deployment_step, &DeploymentStep.save/1)
+    state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
     {:stop, :normal, {:awaiting_build_deploy, state_data}, state_data}
   end
 
   @spec deployment_step_completed(term, term, term) :: {:stop, :normal, {:completed, term}, term}
-  def deployment_step_completed(_reason, _current_state, state_data) do 
+  def deployment_step_completed(_reason, _current_state, state_data) do
+    state_data = Map.update!(state_data, :deployment_step, &DeploymentStep.save/1) 
+    state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
     OrchestratorPublisher.execute_orchestration(state_data)
-    {:stop, :normal, {:completed, state_data[:deployment]}, state_data}
+    {:stop, :normal, {:completed, state_data}, state_data}
   end 
 
   @spec deployment_completed(term, term, term) :: {:stop, :normal, {:completed, term}, term}
   def deployment_completed(_reason, _current_state, state_data) do 
     state_data = Map.update!(state_data, :deployment, &(%{&1 | completed: true}) )
-    state_data = Map.update!(state_data, :deployment, &( %{&1 | output: &1.output ++ ["Workflow has completed"]} ))
-    Deployment.save(state_data[:deployment])
-    {:stop, :normal, {:completed, state_data[:deployment]}, state_data}
+    state_data = append_output_log(state_data, :deployment, "Deployment has completed!")
+    state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
+    {:stop, :normal, {:completed, state_data}, state_data}
+  end
+
+  def append_output_log(state_data, model, log) do 
+    Map.update!(state_data, model, &( %{&1 | output: &1.output ++ [log]} ))
   end 
+
+  def create_deployment_step(state_data, current_step) do 
+    #Log step start to manager
+    new_step_id = ProductDeploymentStepApi.create_step!(ManagerApi.get_api, state_data[:deployment].product_name, state_data[:deployment].deployment_id, %{
+      product_deployment_plan_step_id: current_step.id,
+      product_deployment_plan_step_type: current_step.type,
+      duration: "1",
+      output: Poison.encode!(["#{current_step.type} has begun"]),
+      successful: nil
+    })
+
+    ProductDeploymentStepApi.get_step(ManagerApi.get_api, state_data[:deployment].product_name, state_data[:deployment].deployment_id, new_step_id)
+  end
 
   @doc """
   :gen_fsm callback - http://www.erlang.org/doc/man/gen_fsm.html#Module:terminate-3
