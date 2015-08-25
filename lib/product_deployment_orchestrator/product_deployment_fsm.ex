@@ -33,7 +33,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   alias OpenAperture.ProductDeploymentOrchestratorApi.Deployment
   alias OpenAperture.ProductDeploymentOrchestratorApi.DeploymentStep
   alias OpenAperture.ManagerApi.Workflow, as: WorkflowApi
-  alias OpenAperture.ManagerApi.ProductDeployment, as: ProductDeploymentApi
   alias OpenAperture.ManagerApi.ProductDeploymentStep, as: ProductDeploymentStepApi
   alias OpenAperture.ManagerApi
 
