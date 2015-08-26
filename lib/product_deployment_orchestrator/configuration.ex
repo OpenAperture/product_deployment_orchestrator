@@ -47,20 +47,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
     System.get_env("QUEUE_NAME") || get_config(:openaperture_overseer, :queue_name)
   end
 
-  @doc """
-  Method to retrieve the associated UI's url
-   
-  ## Options
-   
-  ## Return values
-
-  The exchange identifier
-  """ 
-  @spec get_ui_url() :: String.t
-  def get_ui_url do
-    get_config(:openaperture_overseer, :ui_url)
-  end
-
   @doc false
   # Method to retrieve a configuration option from the environment or config settings
   # 
