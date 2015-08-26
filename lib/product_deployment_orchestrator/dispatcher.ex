@@ -10,9 +10,8 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   alias OpenAperture.ProductDeploymentOrchestrator.Configuration
   alias OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM
 
-  #alias OpenAperture.WorkflowOrchestrator.MessageManager
-
   alias OpenAperture.ManagerApi
+  alias OpenAperture.ManagerApi.SystemEvent
 
   @moduledoc """
   This module contains the logic to dispatch WorkflowOrchestrator messsages to the appropriate GenServer(s) 
@@ -61,25 +60,30 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
   """
   @spec register_queues() :: :ok | {:error, String.t}
   def register_queues do
-    Logger.debug("Registering WorkflowOrchestrator queues...")
-    #workflow_orchestration_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
-    workflow_orchestration_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
+    Logger.debug("Registering ProductDeploymentOrchestrator queues...")
+    product_deployment_orchestrator_queue = QueueBuilder.build(ManagerApi.get_api, Configuration.get_current_queue_name, Configuration.get_current_exchange_id)
 
     options = OpenAperture.Messaging.ConnectionOptionsResolver.get_for_broker(ManagerApi.get_api, Configuration.get_current_broker_id)
-    subscribe(options, workflow_orchestration_queue, fn(payload, _meta, %{delivery_tag: delivery_tag} = async_info) -> 
+    subscribe(options, product_deployment_orchestrator_queue, fn(payload, _meta, %{delivery_tag: delivery_tag} = async_info) -> 
       try do
         MessageManager.track(async_info)
         execute_orchestration(payload, delivery_tag) 
         acknowledge(delivery_tag)
       catch
         :exit, code   -> 
-          Logger.error("Message #{delivery_tag} (workflow #{payload[:id]}) Exited with code #{inspect code}.  Payload:  #{inspect payload}")
+          msg = "Message #{delivery_tag} (workflow #{payload[:id]}) Exited with code #{inspect code}.  Payload:  #{inspect payload}"
+          log_system_event(:unhandled_exception, msg, payload)
+          Logger.error(msg)
           acknowledge(delivery_tag)
         :throw, value -> 
-          Logger.error("Message #{delivery_tag} (workflow #{payload[:id]}) Throw called with #{inspect value}.  Payload:  #{inspect payload}")
+          msg = "Message #{delivery_tag} (workflow #{payload[:id]}) Caught thrown error with #{inspect value}.  Payload:  #{inspect payload}"
+          log_system_event(:unhandled_exception, msg, payload)
+          Logger.error(msg)
           acknowledge(delivery_tag)
-        what, value   -> 
-          Logger.error("Message #{delivery_tag} (workflow #{payload[:id]}) Caught #{inspect what} with #{inspect value}.  Payload:  #{inspect payload}")
+        what, value   ->
+          msg = "Message #{delivery_tag} (workflow #{payload[:id]}) Caught #{inspect what} with #{inspect value}.  Payload:  #{inspect payload}"
+          log_system_event(:unhandled_exception, msg, payload)
+          Logger.error(msg)
           acknowledge(delivery_tag)
       end
     end)
@@ -102,6 +106,17 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Dispatcher do
         raise "Unable to process request #{delivery_tag} (workflow #{payload[:id]}):  #{inspect reason}"
     end
   end
+
+  def log_system_event(type, msg, data) do 
+    event = %{
+      unique: true,
+      type: type,
+      severity: :error,
+      data: data,
+      message: msg
+    }
+    SystemEvent.create_system_event!(ManagerApi.get_api, event)
+  end 
 
   @doc """
   Method to acknowledge a message has been processed

@@ -15,3 +15,6 @@ use Mix.Config
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 
+config :openaperture_product_deployment_orchestrator,
+  workflow_checkback_time: 5000
+

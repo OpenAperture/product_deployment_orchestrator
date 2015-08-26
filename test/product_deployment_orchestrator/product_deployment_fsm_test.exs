@@ -1,10 +1,14 @@
+require Logger
+
 defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
   use ExUnit.Case
   use ExVCR.Mock, adapter: ExVCR.Adapter.Httpc, options: [clear_mock: true]
+  use Timex
 
   alias OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM
 
   alias OpenAperture.ProductDeploymentOrchestratorApi.Deployment
+  alias OpenAperture.ProductDeploymentOrchestratorApi.DeploymentStep
   alias OpenAperture.ManagerApi.Workflow, as: WorkflowApi
   alias OpenAperture.ManagerApi.Deployment, as: DeploymentApi
   alias OpenAperture.ManagerApi
@@ -157,7 +161,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
       },
       step_info: %{}
@@ -211,7 +215,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: "success"
         },
-        output: nil,
+        output: [],
         completed: false,
       },
       step_info: %{}
@@ -222,87 +226,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     assert type == :in_progress
     assert response_data == :deployment_completed
     assert state[:deployment].output == []
-  after
-    :meck.unload
-  end
-
-   test "determine_next_step -  error : step type does not match a machine state" do 
-    :meck.new(Deployment, [:passthrough])
-    :meck.expect(Deployment, :determine_current_step, fn _ -> %PlanTreeNode{
-      type: "warblegarble",
-      options: %{},
-      execution_options: %{},
-      on_success_step_id: 1,
-      on_success_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      on_failure_step_id: 2,
-      on_failure_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      status: nil
-    } end)
-
-    state_data = %{
-      product_deployment_orchestration_exchange_id: 1,
-      product_deployment_orchestration_broker_id: 1,
-      product_deployment_orchestration_queue: "product_deployment_orchestrator",
-      deployment: %Deployment{
-        product_name: "product1",
-        deployment_id: 101,
-        plan_tree: %PlanTreeNode{
-          type: "warblegarble",
-          options: %{},
-          execution_options: %{},
-          on_success_step_id: 1,
-          on_success_step: %PlanTreeNode{
-            type: "build_deploy",
-            options: %{},
-            execution_options: %{},
-            on_success_step_id: nil,
-            on_success_step: nil,
-            on_failure_step_id: nil,
-            on_failure_step: nil,
-            status: nil
-          },
-          on_failure_step_id: 2,
-          on_failure_step: %PlanTreeNode{
-            type: "build_deploy",
-            options: %{},
-            execution_options: %{},
-            on_success_step_id: nil,
-            on_success_step: nil,
-            on_failure_step_id: nil,
-            on_failure_step: nil,
-            status: nil
-          },
-          status: nil
-        },
-        output: nil,
-        completed: false,
-      },
-      step_info: %{}
-    }
-
-    {action, type, response_data, state} = ProductDeploymentFSM.determine_next_step(nil, nil, state_data)
-    assert action == :stop
-    assert type == :normal
-    assert response_data == {:error, "No action match for warblegarble"}
-    assert state[:deployment].output == []
+    assert state[:current_step] == nil
   after
     :meck.unload
   end
@@ -312,35 +236,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
 
   test "build_deploy -  in_progress : build_deploy still in progress" do 
     :meck.new(Deployment, [:passthrough])
-    :meck.expect(Deployment, :determine_current_step, fn _ -> %PlanTreeNode{
-      type: "build_deploy",
-      options: %{},
-      execution_options: %{},
-      on_success_step_id: 1,
-      on_success_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      on_failure_step_id: 2,
-      on_failure_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      status: "in_progress"
-    } end)
-
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
 
     :meck.new(WorkflowApi, [:passthrough])
@@ -350,6 +245,34 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
       product_deployment_orchestration_queue: "product_deployment_orchestrator",
+      current_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: 1,
+          on_success_step: %PlanTreeNode{
+            type: "build_deploy",
+            options: %{},
+            execution_options: %{},
+            on_success_step_id: nil,
+            on_success_step: nil,
+            on_failure_step_id: nil,
+            on_failure_step: nil,
+            status: nil
+          },
+          on_failure_step_id: 2,
+          on_failure_step: %PlanTreeNode{
+            type: "build_deploy",
+            options: %{},
+            execution_options: %{},
+            on_success_step_id: nil,
+            on_success_step: nil,
+            on_failure_step_id: nil,
+            on_failure_step: nil,
+            status: nil
+          },
+          status: "in_progress"
+      },
       deployment: %Deployment{
         product_name: "product1",
         deployment_id: 101,
@@ -381,8 +304,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
@@ -397,49 +327,48 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
 
   test "build_deploy - in_progress : build_deploy succeeded" do 
     :meck.new(Deployment, [:passthrough])
-    :meck.expect(Deployment, :determine_current_step, fn _ -> %PlanTreeNode{
-      type: "build_deploy",
-      options: %{},
-      execution_options: %{},
-      on_success_step_id: 1,
-      on_success_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      on_failure_step_id: 2,
-      on_failure_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      status: "in_progress"
-    } end)
-
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
 
     :meck.new(WorkflowApi, [:passthrough])
-    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{workflow_completed: true}} end)
+    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{"workflow_completed" => true}} end)
 
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
       product_deployment_orchestration_queue: "product_deployment_orchestrator",
+      current_step: %PlanTreeNode{
+        type: "build_deploy",
+        options: %{},
+        execution_options: %{},
+        on_success_step_id: 1,
+        on_success_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        on_failure_step_id: 2,
+        on_failure_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        status: "in_progress",
+      },
       deployment: %Deployment{
         product_name: "product1",
         deployment_id: 101,
         plan_tree: %PlanTreeNode{
-          type: "warblegarble",
+          type: "build_deploy",
           options: %{},
           execution_options: %{},
           on_success_step_id: 1,
@@ -464,10 +393,17 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
             on_failure_step: nil,
             status: nil
           },
-          status: nil
+          status: "in_progress"
         },
-        output: nil,
+        output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
@@ -482,44 +418,43 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
 
   test "build_deploy - in_progress : build_deploy failed" do 
     :meck.new(Deployment, [:passthrough])
-    :meck.expect(Deployment, :determine_current_step, fn _ -> %PlanTreeNode{
-      type: "build_deploy",
-      options: %{},
-      execution_options: %{},
-      on_success_step_id: 1,
-      on_success_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      on_failure_step_id: 2,
-      on_failure_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      status: "in_progress"
-    } end)
-
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
 
     :meck.new(WorkflowApi)
-    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{workflow_error: true}} end)
+    :meck.expect(WorkflowApi, :get_workflow, fn _, _ -> %Response{body: %{"workflow_error" => true}} end)
 
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
       product_deployment_orchestration_queue: "product_deployment_orchestrator",
+      current_step:  %PlanTreeNode{
+        type: "build_deploy",
+        options: %{},
+        execution_options: %{},
+        on_success_step_id: 1,
+        on_success_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        on_failure_step_id: 2,
+        on_failure_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        status: "in_progress",
+      },
       deployment: %Deployment{
         product_name: "product1",
         deployment_id: 101,
@@ -551,8 +486,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
           },
           status: nil
         },
-        output: nil,
+        output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
@@ -567,49 +509,47 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
 
   test "build_deploy - step not started : successful workflow call" do 
     :meck.new(Deployment, [:passthrough])
-    :meck.expect(Deployment, :determine_current_step, fn _ -> %PlanTreeNode{
-      type: "build_deploy",
-      options: %{},
-      execution_options: %{},
-      on_success_step_id: 1,
-      on_success_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      on_failure_step_id: 2,
-      on_failure_step: %PlanTreeNode{
-        type: "build_deploy",
-        options: %{},
-        execution_options: %{},
-        on_success_step_id: nil,
-        on_success_step: nil,
-        on_failure_step_id: nil,
-        on_failure_step: nil,
-        status: nil
-      },
-      status: nil
-    } end)
-
     :meck.expect(Deployment, :update_current_step_status, fn _, _ -> nil end)
-
-    :meck.expect(Deployment, :save, fn _ -> nil end)
+    :meck.expect(Deployment, :save, fn deployment -> deployment end)
 
     :meck.new(WorkflowApi, [])
-    :meck.expect(WorkflowApi, :create_workflow, fn _, _, _, _, _ -> %Response{
-      status: 201,
-      headers: [{"location", "something/something/1"}]
-    } end)
+    :meck.expect(WorkflowApi, :create_workflow!, fn _, _, _, _, _ -> "1" end)
 
+    :meck.new(ProductDeploymentFSM, [:passthrough])
+    :meck.expect(ProductDeploymentFSM, :create_deployment_step, fn _, _ -> %Response{body: ""} end)
+    
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
       product_deployment_orchestration_queue: "product_deployment_orchestrator",
+      current_step:  %PlanTreeNode{
+        type: "build_deploy",
+        options: %{},
+        execution_options: %{},
+        on_success_step_id: 1,
+        on_success_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        on_failure_step_id: 2,
+        on_failure_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        status: nil
+      },
       deployment: %Deployment{
         product_name: "product1",
         deployment_id: 101,
@@ -643,14 +583,24 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         },
         output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
 
+    :meck.new(DeploymentStep, [])
+    :meck.expect(DeploymentStep, :from_response_body, fn _, _ -> %DeploymentStep{} end)
+
     {action, type, response_data, state} = ProductDeploymentFSM.build_deploy(nil, nil, state_data)
     assert action == :reply
     assert type == :in_progress
-    assert response_data == :build_deploy
+    assert response_data == :build_deploy_in_progress
     assert state[:step_info][:workflow_id] =="1"
     assert state[:deployment].output != []
   after
@@ -693,14 +643,43 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     :meck.expect(Deployment, :save, fn _ -> nil end)
 
     :meck.new(WorkflowApi, [])
-    :meck.expect(WorkflowApi, :create_workflow, fn _, _, _, _, _ -> %Response{
-      status: 500,
-    } end)
+    :meck.expect(WorkflowApi, :create_workflow!, fn _, _, _, _, _ -> nil end)
+
+    :meck.new(ProductDeploymentFSM, [:passthrough])
+    :meck.expect(ProductDeploymentFSM, :create_deployment_step, fn _, _ -> %Response{body: ""} end)
 
     state_data = %{
       product_deployment_orchestration_exchange_id: 1,
       product_deployment_orchestration_broker_id: 1,
       product_deployment_orchestration_queue: "product_deployment_orchestrator",
+      current_step:  %PlanTreeNode{
+        type: "build_deploy",
+        options: %{},
+        execution_options: %{},
+        on_success_step_id: 1,
+        on_success_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        on_failure_step_id: 2,
+        on_failure_step: %PlanTreeNode{
+          type: "build_deploy",
+          options: %{},
+          execution_options: %{},
+          on_success_step_id: nil,
+          on_success_step: nil,
+          on_failure_step_id: nil,
+          on_failure_step: nil,
+          status: nil
+        },
+        status: nil
+      },
       deployment: %Deployment{
         product_name: "product1",
         deployment_id: 101,
@@ -734,14 +713,24 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
         },
         output: [],
         completed: false,
+        duration: 1,
+        updated_at: Date.from({{2015, 8, 21}, {8, 20, 15}})
+      },
+      deployment_step: %DeploymentStep{
+        duration: "1",
+        output: ["step has begun"],
+        successful: nil
       },
       step_info: %{}
     }
 
+    :meck.new(DeploymentStep, [])
+    :meck.expect(DeploymentStep, :from_response_body, fn _, _ -> %DeploymentStep{} end)
+
     {action, type, response_data, state} = ProductDeploymentFSM.build_deploy(nil, nil, state_data)
     assert action == :reply
     assert type == :in_progress
-    assert response_data == :build_deploy
+    assert response_data == :deployment_step_completed
     assert state[:step_info][:workflow_id] == nil
     assert state[:deployment].output != []
   after
