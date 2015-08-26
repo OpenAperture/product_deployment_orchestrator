@@ -34,15 +34,19 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
   @behaviour :gen_fsm
 
+  alias OpenAperture.ProductDeploymentOrchestrator.Configuration
+
+  alias OpenAperture.ProductDeploymentOrchestratorApi.Request, as: OrchestratorRequest
+  alias OpenAperture.ProductDeploymentOrchestratorApi.ProductDeploymentOrchestrator.Publisher, as: OrchestratorPublisher
   alias OpenAperture.ProductDeploymentOrchestratorApi.Deployment
   alias OpenAperture.ProductDeploymentOrchestratorApi.DeploymentStep
   alias OpenAperture.ProductDeploymentOrchestratorApi.PlanTreeNode
+
   alias OpenAperture.ManagerApi.Workflow, as: WorkflowApi
   alias OpenAperture.ManagerApi.ProductDeploymentStep, as: ProductDeploymentStepApi
   alias OpenAperture.ManagerApi
 
-  alias OpenAperture.ProductDeploymentOrchestratorApi.Request, as: OrchestratorRequest
-  alias OpenAperture.ProductDeploymentOrchestratorApi.ProductDeploymentOrchestrator.Publisher, as: OrchestratorPublisher
+  
 
   @doc """
   Method to start a ProductDeployment Orchestration
@@ -114,7 +118,6 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
       :in_progress -> 
         execute(fsm)
       {:awaiting_build_deploy, request} ->
-        :timer.sleep(5000)
         OrchestratorPublisher.execute_orchestration(request)
         {:completed, nil}
       {:completed, workflow} -> 
@@ -124,39 +127,39 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
   @spec determine_next_step(term, term, term) :: {:reply, :in_progress, :build_deploy | :deployment_completed, term} | {:stop, :normal, {:error, String.t}, term}
   def determine_next_step(_event, _from, state_data) do
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} determining next step")
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} determining next step")
     #Setup logging
     state_data = Map.update!(state_data, :deployment, &(%{&1 | output: []}) )
 
     current_step = Deployment.determine_current_step(state_data[:deployment].plan_tree)
     state_data = Map.put(state_data, :current_step, current_step)
 
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Found step: #{inspect(current_step)}")
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Found step: #{inspect(current_step)}")
 
     case current_step do 
       nil -> 
-        Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} step is nil")
+        Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} step is nil")
         {:reply, :in_progress, :deployment_completed, state_data}
       step ->
-        Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} step is NOT nil")
+        Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} step is NOT nil")
         {:reply, :in_progress, String.to_atom(step.type), state_data}
     end
   end
 
   @spec build_deploy(term, term, term) :: {:reply, :in_progress, :build_deploy | :build_deploy_in_progress | :deployment_step_completed, term}
   def build_deploy(_current_state, _from, %{current_step: current_step = %PlanTreeNode{status: nil}} = state_data) do
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Creating new workflow!")
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Creating new workflow!")
 
     #Log step start to manager
     state_data = Map.update!(state_data, :deployment_step, fn _ -> __MODULE__.create_deployment_step(state_data, current_step).body |> DeploymentStep.from_response_body(state_data[:deployment].product_name) end)
     
     options = Map.merge(current_step.options, current_step.execution_options)
 
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Creating workflow with these options: #{inspect options}")
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Creating workflow with these options: #{inspect options}")
 
     case WorkflowApi.create_workflow!(ManagerApi.get_api, options, %{}, [], []) do 
       nil -> 
-        Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Failed to create workflow")
+        Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Failed to create workflow")
         state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, "failure")} ))
         state_data = append_output_log(state_data, :deployment, "Failed to create workflow! Options: #{Poison.encode!(inspect options)}")
         {:reply, :in_progress, :deployment_step_completed, state_data}
@@ -171,14 +174,15 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   end
 
   def build_deploy(_current_state, _from, %{current_step: %PlanTreeNode{status: "in_progress"}} = state_data) do
+    :timer.sleep(Configuration.get_workflow_checkback_time)
     workflow = WorkflowApi.get_workflow(ManagerApi.get_api(), state_data[:step_info][:workflow_id]).body
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]}  Current workflow: #{inspect workflow}")
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]}  Current workflow: #{inspect workflow}")
     status = cond do
       workflow["workflow_error"] -> "failure"
       workflow["workflow_completed"] -> "success"
       true -> "in_progress"
     end
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]}  Status of workflow determined to be: #{status}")
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]}  Status of workflow determined to be: #{status}")
 
     state_data = Map.update!(state_data, :deployment, &( %{&1 | plan_tree: Deployment.update_current_step_status(&1.plan_tree, status)} ))
 
@@ -187,7 +191,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
         state_data = append_output_log(state_data, :deployment_step, "Awaiting completion of build_deploy workflow: #{state_data[:step_info][:workflow_id]}")
         {:reply, :in_progress, :build_deploy_in_progress, state_data}
       completion_status -> 
-        Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Workflow completed. Completion status: #{completion_status}")
+        Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Workflow completed. Completion status: #{completion_status}")
         state_data = append_output_log(state_data, :deployment_step, "Workflow: #{state_data[:step_info][:workflow_id]} has finished in #{completion_status}!")
         state_data = Map.update!(state_data, :deployment_step, &( %{&1 | successful: completion_status == "success"} ))
         state_data = append_output_log(state_data, :deployment, "Deployment Step: #{state_data[:deployment_step].id} has completed")
@@ -197,7 +201,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
   @spec build_deploy_in_progress(term, term, term) :: {:stop, :normal, {:awaiting_build_deploy, term}, term}
   def build_deploy_in_progress(_reason, _current_state, state_data) do 
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Awaiting completion of workflow.") 
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Awaiting completion of workflow.") 
     state_data = Map.update!(state_data, :deployment_step, &DeploymentStep.save/1)
     state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
     {:stop, :normal, {:awaiting_build_deploy, state_data}, state_data}
@@ -205,7 +209,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
   @spec deployment_step_completed(term, term, term) :: {:stop, :normal, {:completed, term}, term}
   def deployment_step_completed(_reason, _current_state, state_data) do
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Deployment step completed.") 
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Deployment step completed.") 
     state_data = Map.update!(state_data, :deployment_step, &DeploymentStep.save/1) 
     state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
     OrchestratorPublisher.execute_orchestration(state_data)
@@ -214,7 +218,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
 
   @spec deployment_completed(term, term, term) :: {:stop, :normal, {:completed, term}, term}
   def deployment_completed(_reason, _current_state, state_data) do 
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Deployment completed.") 
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Deployment completed.") 
     state_data = Map.update!(state_data, :deployment, &(%{&1 | completed: true}) )
     state_data = append_output_log(state_data, :deployment, "Deployment has completed!")
     state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
@@ -235,7 +239,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
       successful: nil
     })
 
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Product deployment step created.") 
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Product deployment step created.") 
 
     ProductDeploymentStepApi.get_step(ManagerApi.get_api, state_data[:deployment].product_name, state_data[:deployment].deployment_id, new_step_id)
   end
@@ -257,7 +261,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
   """
   @spec terminate(term, term, term) :: :ok
   def terminate(_reason, _current_state, state_data) do
-    Logger.debug("#{state_data[:product_deployment_orchestrator_prefix]} Deployment orchestration has finished normally") 
+    Logger.debug("#{state_data[:product_deployment_orchestration_prefix]} Deployment orchestration has finished normally") 
     :ok
   end
 end

@@ -34,6 +34,20 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.Configuration do
   end
 
   @doc """
+  Method to retrieve the wait time for the fsm before checking the status of a running workflow
+   
+  ## Options
+   
+  ## Return values
+
+  The exchange identifier
+  """ 
+  @spec get_workflow_checkback_time() :: String.t
+  def get_workflow_checkback_time do
+    get_config(:openaperture_product_deployment_orchestrator, :workflow_checkback_time)
+  end
+
+  @doc """
   Method to retrieve the currently assigned queue name (for "workflow_orchestration")
    
   ## Options

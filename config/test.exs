@@ -31,4 +31,5 @@ config :openaperture_manager_api,
 
 config :openaperture_product_deployment_orchestrator,
   exchange_id: 99,
-  broker_id: 99
+  broker_id: 99,
+  workflow_checkback_time: 1
