@@ -600,7 +600,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSMTest do
     {action, type, response_data, state} = ProductDeploymentFSM.build_deploy(nil, nil, state_data)
     assert action == :reply
     assert type == :in_progress
-    assert response_data == :build_deploy
+    assert response_data == :build_deploy_in_progress
     assert state[:step_info][:workflow_id] =="1"
     assert state[:deployment].output != []
   after
