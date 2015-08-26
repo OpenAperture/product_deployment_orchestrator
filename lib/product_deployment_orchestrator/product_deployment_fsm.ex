@@ -7,12 +7,11 @@
 #   * Deployment in progress, current step is build_deploy, build_deploy hasn't started
 #     :determine_next_step
 #     :build_deploy
-#     :build_deploy
-#     :awaiting_build_deploy
+#     :build_deploy_in_progress
 #   * Deployment in progress, current step is build_deploy, build_deploy hasn't finished
 #     :determine_next_step
 #     :build_deploy
-#     :awaiting_build_deploy
+#     :build_deploy_in_progress
 #   * Deployment in progress, current step is build_deploy, build_deploy has finished
 #     :determine_next_step
 #     :build_deploy
@@ -168,8 +167,7 @@ defmodule OpenAperture.ProductDeploymentOrchestrator.ProductDeploymentFSM do
         state_data = append_output_log(state_data, :deployment, "Successfully created workflow #{workflow_id}")
         state_data = Map.update!(state_data, :step_info, &( Map.put(&1, :workflow_id, workflow_id) ))
         state_data = Map.update!(state_data, :deployment, &Deployment.save/1)
-        {:reply, :in_progress, :build_deploy, state_data}
-      
+        {:reply, :in_progress, :build_deploy_in_progress, state_data}
     end 
   end
 
