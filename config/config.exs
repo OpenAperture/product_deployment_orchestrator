@@ -26,7 +26,7 @@ config :autostart,
   register_queues: true
 
 config :openaperture_overseer_api,
-  module_type: :product_deployment_orchestartor,
+  module_type: :product_deployment_orchestrator,
   exchange_id: System.get_env("EXCHANGE_ID"),
   broker_id: System.get_env("BROKER_ID")
 
